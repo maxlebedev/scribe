@@ -1,0 +1,27 @@
+[project]
+name = "scribe"
+version = "0.1.0"
+description = "Logseq-style block outliner for the terminal"
+requires-python = ">=3.12"
+dependencies = [
+    "textual>=8.2.8",
+]
+
+[project.scripts]
+scribe = "app.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+# The command is `scribe`; the code is imported as `app`.
+[tool.hatch.build.targets.wheel]
+packages = ["app"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+]
