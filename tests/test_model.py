@@ -1,6 +1,6 @@
 import pytest
 
-from app.model import Block
+from app.model import Block, Page
 
 
 @pytest.mark.parametrize(
@@ -35,3 +35,13 @@ def test_add_child_sets_parent():
     parent, child = Block(content="p"), Block(content="c")
     parent.add_child(child)
     assert child.parent is parent and parent.children == [child]
+
+
+def test_insert_after_top_level_and_nested():
+    a, b, child, new_top, new_child = (Block(content=c) for c in "a b c X Y".split())
+    page = Page(blocks=[a, b])
+    a.add_child(child)
+    page.insert_after(a, new_top)
+    page.insert_after(child, new_child)
+    assert page.blocks == [a, new_top, b] and new_top.parent is None
+    assert a.children == [child, new_child] and new_child.parent is a

@@ -28,7 +28,7 @@ Build order. Each phase ends with something runnable/testable. See `design-doc.m
 - [ ] 17. Backlinks panel below the page (blocks referencing this page, grouped by source page).
 
 ## Phase 4 — Editing
-- [ ] 18. Modal: normal mode moves between blocks; `i`/Enter edits current block in a `TextArea`; `Esc` commits.
+- [x] 18. Modal: normal mode moves between blocks; `i`/Enter edits current block in a `TextArea`; `Esc` commits.
 - [ ] 19. Block ops: new sibling below/above (`o`/`O`), indent/outdent (`Tab`/`Shift-Tab`), delete, move up/down.
 - [ ] 20. Multi-line editing within a block (newline key that doesn't commit).
 - [ ] 21. Cycle task state key (none → TODO → DOING → DONE).

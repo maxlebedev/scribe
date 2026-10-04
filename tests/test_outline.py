@@ -4,7 +4,8 @@ from textual.app import App
 from textual.widgets import Static
 
 from app.markdown import parse
-from app.outline import BlockView, Outline
+from app.render import MARKER_STYLES
+from app.outline import BlockEditor, BlockView, Outline
 
 TEXT = "- a\n\t- b\n\t  more\n\t\t- c\n- d\n"
 
@@ -76,3 +77,140 @@ def test_page_properties_shown_above_blocks(keymap):
             return str(props.content), outline.children.index(props), outline.cursor_block.content
 
     assert asyncio.run(go()) == ("title:: Hi", 0, "a")
+
+
+# --- Editing (tests/fixtures/keybinds.yaml): s/d edit at start/end, ctrl+g commits,
+# ctrl+b splits into a new block, ctrl+l inserts a newline. ---
+
+
+def keys_for(text):
+    return ["space" if c == " " else "ctrl+l" if c == "\n" else c for c in text]
+
+
+def edit(keymap, text, keys):
+    """Press `keys`, then return (page, focused widget type, editor text or None, cursor block)."""
+
+    async def go():
+        app = Host(text, keymap)
+        async with app.run_test() as pilot:
+            await pilot.press(*keys)
+            await pilot.pause()
+            outline = app.query_one(Outline)
+            editors = outline.query(BlockEditor)
+            return (
+                app.page,
+                type(app.focused),
+                editors.first().text if editors else None,
+                outline.cursor_block,
+            )
+
+    return asyncio.run(go())
+
+
+def test_edit_opens_editor_with_block_text(keymap):
+    _, focused, editor_text, _ = edit(keymap, TEXT, ["n", "d"])
+    assert focused is BlockEditor and editor_text == "b\nmore"
+
+
+def test_typing_appends_and_commit_updates_block(keymap):
+    page, focused, editor_text, block = edit(keymap, TEXT, ["d", *keys_for(" done"), "ctrl+g"])
+    assert block.content == "a done" and page.blocks[0] is block
+    assert focused is Outline and editor_text is None
+
+
+def test_normal_mode_keys_are_text_while_editing(keymap):
+    page, _, editor_text, block = edit(keymap, TEXT, ["d", "n", "p", "x"])
+    assert editor_text == "anpx" and block is page.blocks[0]  # no move, no quit
+
+
+def test_newline_key_inserts_newline_while_editing(keymap):
+    _, _, _, block = edit(keymap, TEXT, ["d", *keys_for("\nsecond"), "ctrl+g"])
+    assert block.content == "a\nsecond"
+
+
+def test_commit_drops_trailing_blank_lines(keymap):
+    _, _, _, block = edit(keymap, TEXT, ["d", "ctrl+l", "ctrl+l", "ctrl+g"])
+    assert block.content == "a"
+
+
+def test_commit_rerenders_block(keymap):
+    async def go():
+        app = Host(TEXT, keymap)
+        async with app.run_test() as pilot:
+            await pilot.press("d", "home", *keys_for("TODO "), "ctrl+g")
+            await pilot.pause()
+            content = app.query(BlockView).first().query_one(".content", Static)
+            [text] = content.content.renderables
+            return content.display, text
+
+    display, text = asyncio.run(go())
+    assert display and text.plain == "TODO a"
+    assert ("TODO", MARKER_STYLES["TODO"]) in [(text.plain[s.start : s.end], s.style) for s in text.spans]
+
+
+def test_edit_on_empty_page_creates_first_block(keymap):
+    page, _, _, block = edit(keymap, "", ["d", *keys_for("hello"), "ctrl+g"])
+    assert [b.content for b in page.blocks] == ["hello"] and block is page.blocks[0]
+
+
+def test_only_commit_key_active_while_editing(keymap):
+    async def go():
+        app = Host(TEXT, keymap)
+        async with app.run_test() as pilot:
+            await pilot.press("d")
+            await pilot.pause()
+            return sorted(b.binding.id for b in app.active_bindings.values() if b.enabled and b.binding.id)
+
+    assert asyncio.run(go()) == ["commit_edit", "insert_newline", "split_block"]
+
+
+def test_edit_at_start_and_end(keymap):
+    _, _, _, block = edit(keymap, TEXT, ["n", "s", *keys_for("X"), "ctrl+g"])
+    assert block.content == "Xb\nmore"
+    _, _, _, block = edit(keymap, TEXT, ["n", "d", *keys_for("X"), "ctrl+g"])
+    assert block.content == "b\nmoreX"
+
+
+def split(keymap, text, keys):
+    """Press `keys`, then return ((content, depth) per view in order, cursor block, focused type)."""
+
+    async def go():
+        app = Host(text, keymap)
+        async with app.run_test() as pilot:
+            await pilot.press(*keys)
+            await pilot.pause()
+            outline = app.query_one(Outline)
+            views = [(v.block.content, v.depth) for v in outline.query(BlockView)]
+            return views, outline.cursor_block, type(app.focused), app.page
+
+    return asyncio.run(go())
+
+
+def test_split_at_end_of_leaf_adds_next_sibling(keymap):
+    views, cursor, focused, page = split(keymap, "- a\n- b\n", ["d", "ctrl+b", *keys_for("new")])
+    assert focused is BlockEditor and cursor is page.blocks[1]
+    assert [(c, d) for c, d in views] == [("a", 0), ("", 0), ("b", 0)]
+    _, _, _, page = split(keymap, "- a\n- b\n", ["d", "ctrl+b", *keys_for("new"), "ctrl+g"])
+    assert [b.content for b in page.blocks] == ["a", "new", "b"]
+
+
+def test_split_block_with_children_adds_first_child(keymap):
+    views, cursor, _, page = split(keymap, TEXT, ["d", "ctrl+b", *keys_for("x"), "ctrl+g"])
+    assert views[:3] == [("a", 0), ("x", 1), ("b\nmore", 1)]
+    assert page.blocks[0].children[0] is cursor and cursor.parent is page.blocks[0]
+
+
+def test_split_in_middle_moves_rest_to_new_block(keymap):
+    keys = ["d", *["left"] * 5, "ctrl+b", "ctrl+g"]
+    views, cursor, _, _ = split(keymap, "- hello world\n", keys)
+    assert views == [("hello ", 0), ("world", 0)] and cursor.content == "world"
+
+
+def test_split_at_line_end_drops_leading_newline(keymap):
+    views, _, _, _ = split(keymap, "- one\n  two\n", ["s", "end", "ctrl+b", "ctrl+g"])
+    assert views == [("one", 0), ("two", 0)]
+
+
+def test_new_block_edited_from_its_start(keymap):
+    views, _, _, _ = split(keymap, "- hello world\n", ["d", *["left"] * 5, "ctrl+b", "X", "ctrl+g"])
+    assert views == [("hello ", 0), ("Xworld", 0)]

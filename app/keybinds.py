@@ -13,6 +13,12 @@ from app.config import config_path
 DEFAULTS = {
     "cursor_down": "j",
     "cursor_up": "k",
+    "edit_block_start": "a",
+    "edit_block_end": "e",
+    "commit_edit": "escape",
+    "split_block": "enter",
+    # shift+enter only reaches us in terminals that report it (not Vim's :terminal).
+    "insert_newline": "shift+enter,ctrl+j",
     "quit": "q",
 }
 

@@ -76,3 +76,13 @@ class Page:
     def walk(self) -> Iterator[tuple[Block, int]]:
         for block in self.blocks:
             yield from block.walk()
+
+    def siblings(self, block: Block) -> list[Block]:
+        """The list `block` lives in: its parent's children, or the page's top-level blocks."""
+        return block.parent.children if block.parent else self.blocks
+
+    def insert_after(self, block: Block, new: Block) -> None:
+        """Insert `new` as the next sibling of `block`."""
+        siblings = self.siblings(block)
+        siblings.insert(siblings.index(block) + 1, new)
+        new.parent = block.parent

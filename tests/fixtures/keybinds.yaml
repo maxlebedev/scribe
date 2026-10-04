@@ -2,4 +2,9 @@
 # them. Must bind every action (checked by the `keymap` fixture).
 cursor_down: n
 cursor_up: p
+edit_block_start: s
+edit_block_end: d
+commit_edit: ctrl+g
+split_block: ctrl+b
+insert_newline: ctrl+l
 quit: x
