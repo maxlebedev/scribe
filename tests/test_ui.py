@@ -51,16 +51,16 @@ def test_mode_line_follows_mode(tmp_path, keymap):
         app = ScribeApp(Config(notes_dir=tmp_path), keymap, today=TODAY)
         async with app.run_test() as pilot:
             line = app.query_one(ModeLine)
-            seen = [(text_of(app, "#mode"), line.has_class("-edit"))]
-            await pilot.press("d")  # edit at end
+            seen = [(text_of(app, "#mode"), line.has_class("-insert"))]
+            await pilot.press("d")  # insert at end
             await pilot.pause()
-            seen.append((text_of(app, "#mode"), line.has_class("-edit")))
+            seen.append((text_of(app, "#mode"), line.has_class("-insert")))
             await pilot.press("ctrl+g")  # commit
             await pilot.pause()
-            seen.append((text_of(app, "#mode"), line.has_class("-edit")))
+            seen.append((text_of(app, "#mode"), line.has_class("-insert")))
             return seen
 
-    assert asyncio.run(run()) == [("VIEW", False), ("EDIT", True), ("VIEW", False)]
+    assert asyncio.run(run()) == [("EDIT", False), ("INSERT", True), ("EDIT", False)]
 
 
 def journal_after(tmp_path, keymap, text, keys):
@@ -105,7 +105,7 @@ def test_mode_line_has_no_key_hints(tmp_path, keymap):
     assert asyncio.run(run()) == 0
 
 
-def test_help_key_shows_current_keys_and_view_mode_key_closes(tmp_path, keymap):
+def test_help_key_shows_current_keys_and_edit_mode_key_closes(tmp_path, keymap):
     async def run():
         app = ScribeApp(Config(notes_dir=tmp_path), keymap, today=TODAY)
         async with app.run_test() as pilot:
@@ -117,7 +117,7 @@ def test_help_key_shows_current_keys_and_view_mode_key_closes(tmp_path, keymap):
             await pilot.press("g")  # the help key doesn't close it
             await pilot.pause()
             still_open = type(app.screen)
-            await pilot.press("ctrl+g")  # the to_view_mode key does
+            await pilot.press("ctrl+g")  # the to_edit_mode key does
             await pilot.pause()
             return type(screen), rows, still_open, type(app.screen)
 
@@ -142,7 +142,7 @@ def test_no_textual_default_keys(tmp_path, keymap):
         app = ScribeApp(Config(notes_dir=tmp_path), keymap, today=TODAY)
         async with app.run_test() as pilot:
             view = unnamed(app)
-            await pilot.press("d")  # edit mode: the text box's bindings are active too
+            await pilot.press("d")  # insert mode: the text box's bindings are active too
             await pilot.pause()
             return view, unnamed(app)
 

@@ -21,16 +21,16 @@ class ModeLine(Horizontal):
     DEFAULT_CSS = """
     ModeLine { dock: bottom; height: 1; background: $panel; }
     ModeLine > #mode { width: auto; padding: 0 1; text-style: bold; color: $text; background: $primary; }
-    ModeLine.-edit { background: $warning 25%; }
-    ModeLine.-edit > #mode { background: $warning; }
+    ModeLine.-insert { background: $warning 25%; }
+    ModeLine.-insert > #mode { background: $warning; }
     """
 
     def compose(self) -> ComposeResult:
-        yield Static(Mode.VIEW.upper(), id="mode")
+        yield Static(Mode.EDIT.upper(), id="mode")
 
     def show(self, mode: Mode) -> None:
         self.query_one("#mode", Static).update(mode.upper())
-        self.set_class(mode is Mode.EDIT, "-edit")
+        self.set_class(mode is Mode.INSERT, "-insert")
 
 
 class KeysScreen(ModalScreen, inherit_bindings=False):
@@ -44,7 +44,7 @@ class KeysScreen(ModalScreen, inherit_bindings=False):
     }
     """
     BINDINGS = [
-        Binding(DEFAULTS["to_view_mode"], "dismiss", "Close", id="to_view_mode"),
+        Binding(DEFAULTS["to_edit_mode"], "dismiss", "Close", id="to_edit_mode"),
     ]
 
     def __init__(self, sections: list[tuple[str, list[tuple[str, str]]]]) -> None:
@@ -100,8 +100,8 @@ class ScribeApp(App, inherit_bindings=False):
             return [(self._keys_display(b), b.description) for b in bindings]
 
         self.push_screen(KeysScreen([
-            ("View mode", rows(Outline.BINDINGS + self.BINDINGS)),
-            ("Edit mode", rows(BlockEditor.BINDINGS)),
+            ("Edit mode", rows(Outline.BINDINGS + self.BINDINGS)),
+            ("Insert mode", rows(BlockEditor.BINDINGS)),
         ]))
 
     def _keys_display(self, binding: Binding) -> str:

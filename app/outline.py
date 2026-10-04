@@ -1,4 +1,4 @@
-"""Outline of a page's blocks: a block cursor in view mode, a TextArea in edit mode.
+"""Outline of a page's blocks: a block cursor in edit mode, a TextArea in insert mode.
 
 Edits update the in-memory page and post `Outline.Changed`; the app saves.
 The cursor block is joined to its parent by a guide: a line down from the parent's bullet
@@ -29,8 +29,8 @@ Snapshot = tuple[list[tuple[str, int]], int]
 
 
 class Mode(StrEnum):
-    VIEW = "view"
-    EDIT = "edit"
+    EDIT = "edit"  # move between blocks, change structure
+    INSERT = "insert"  # type into one block
 
 
 class Gutter(Widget):
@@ -103,14 +103,14 @@ class BlockView(Horizontal):
         yield self.bullet
         yield Static(Group(*render_block(self.block)), classes="content")
 
-    async def start_edit(self, at_start: bool = False) -> None:
+    async def start_insert(self, at_start: bool = False) -> None:
         self.query_one(".content").display = False
         editor = BlockEditor(self.block.content)
         await self.mount(editor)
         editor.move_cursor((0, 0) if at_start else editor.document.end)
         editor.focus()
 
-    async def finish_edit(self, text: str) -> None:
+    async def finish_insert(self, text: str) -> None:
         # Trailing blank lines would be dropped on the next parse anyway.
         self.block.content = text.rstrip("\n")
         await self.query_one(BlockEditor).remove()
@@ -120,7 +120,7 @@ class BlockView(Horizontal):
 
 
 class BlockEditor(TextArea):
-    """Edits one block's raw text. The commit key ends the edit; the split key ends it and
+    """Edits one block's raw text in insert mode. The to-edit-mode key commits it; the split key commits and
     moves the text after the cursor into a new block."""
 
     DEFAULT_CSS = """
@@ -128,7 +128,7 @@ class BlockEditor(TextArea):
     """
     BINDINGS = [
         # priority: TextArea would otherwise use escape to move focus away.
-        Binding(DEFAULTS["to_view_mode"], "commit", "Done", id="to_view_mode", priority=True),
+        Binding(DEFAULTS["to_edit_mode"], "commit", "Done", id="to_edit_mode", priority=True),
         # priority: TextArea would otherwise insert a newline for enter.
         Binding(DEFAULTS["split_block"], "split", "New block", id="split_block", priority=True),
         Binding(DEFAULTS["insert_newline"], "newline", "Newline", id="insert_newline", priority=True),
@@ -173,8 +173,8 @@ class Outline(VerticalScroll, inherit_bindings=False):  # no scroll keys
     BINDINGS = [
         Binding(DEFAULTS["cursor_up"], "cursor_up", "Up", id="cursor_up"),
         Binding(DEFAULTS["cursor_down"], "cursor_down", "Down", id="cursor_down"),
-        Binding(DEFAULTS["edit_block_start"], "edit_block(True)", "Edit at start", id="edit_block_start"),
-        Binding(DEFAULTS["edit_block_end"], "edit_block", "Edit at end", id="edit_block_end"),
+        Binding(DEFAULTS["insert_at_start"], "insert(True)", "Insert at start", id="insert_at_start"),
+        Binding(DEFAULTS["insert_at_end"], "insert", "Insert at end", id="insert_at_end"),
         Binding(DEFAULTS["new_block_below"], "new_block(True)", "New block below", id="new_block_below"),
         Binding(DEFAULTS["new_block_above"], "new_block(False)", "New block above", id="new_block_above"),
         Binding(DEFAULTS["delete_block"], "delete_block", "Delete", id="delete_block"),
@@ -188,12 +188,12 @@ class Outline(VerticalScroll, inherit_bindings=False):  # no scroll keys
         super().__init__(**kwargs)
         self.page = page
         self.cursor = 0  # index into the page's blocks in document order
-        self.editing: BlockView | None = None
-        # Undo/redo steps: (before, after) snapshots. An edit session, from entering edit
+        self.inserting: BlockView | None = None
+        # Undo/redo steps: (before, after) snapshots. An insert session, from entering insert
         # mode to leaving it (splits included), is one step.
         self.undo_stack: list[tuple[Snapshot, Snapshot]] = []
         self.redo_stack: list[tuple[Snapshot, Snapshot]] = []
-        self._before_edit: Snapshot | None = None
+        self._before_insert: Snapshot | None = None
 
     def compose(self) -> ComposeResult:
         if self.page.property_lines:
@@ -219,26 +219,26 @@ class Outline(VerticalScroll, inherit_bindings=False):  # no scroll keys
 
     @property
     def mode(self) -> Mode:
-        return Mode.EDIT if self.editing else Mode.VIEW
+        return Mode.INSERT if self.inserting else Mode.EDIT
 
     def check_action(self, action: str, parameters: tuple[object, ...]) -> bool | None:
-        # View-mode actions are off (and hidden from the footer) in edit mode.
-        return self.mode is Mode.VIEW
+        # Edit-mode actions are off in insert mode.
+        return self.mode is Mode.EDIT
 
     def _mode_changed(self) -> None:
         self.refresh_bindings()
         self.post_message(self.ModeChanged(self.mode))
 
-    async def action_edit_block(self, at_start: bool = False) -> None:
-        if not self.page.blocks:  # empty page: editing starts its first block
+    async def action_insert(self, at_start: bool = False) -> None:
+        if not self.page.blocks:  # empty page: inserting starts its first block
             await self.action_new_block()
             return
-        await self._start_edit(at_start, self._snapshot())
+        await self._start_insert(at_start, self._snapshot())
 
     async def action_new_block(self, below: bool = True) -> None:
         """Add an empty block right below the cursor block on screen (its first child if it
-        has children, else its next sibling) or above it (its previous sibling), and edit it.
-        Adding and editing are one undo step."""
+        has children, else its next sibling) or above it (its previous sibling), and insert into it.
+        Adding it and typing into it are one undo step."""
         before = self._snapshot()
         new, current = Block(), self.cursor_block
         if current is None:
@@ -250,33 +250,33 @@ class Outline(VerticalScroll, inherit_bindings=False):  # no scroll keys
         else:
             self.page.insert_before(current, new)
         await self._redraw(new)
-        await self._start_edit(True, before)
+        await self._start_insert(True, before)
 
-    async def _start_edit(self, at_start: bool, before: Snapshot) -> None:
-        self._before_edit = before
-        self.editing = self.query(BlockView)[self.cursor]
+    async def _start_insert(self, at_start: bool, before: Snapshot) -> None:
+        self._before_insert = before
+        self.inserting = self.query(BlockView)[self.cursor]
         self._mode_changed()
-        await self.editing.start_edit(at_start)
+        await self.inserting.start_insert(at_start)
 
     async def on_block_editor_committed(self, event: BlockEditor.Committed) -> None:
         event.stop()
-        view, self.editing = self.editing, None
+        view, self.inserting = self.inserting, None
         self._mode_changed()
-        await view.finish_edit(event.text)
-        if self._before_edit[0] != self.page.outline():
+        await view.finish_insert(event.text)
+        if self._before_insert[0] != self.page.outline():
             self.post_message(self.Changed())
-            self._record(self._before_edit)
+            self._record(self._before_insert)
         self.focus()
 
     async def on_block_editor_split(self, event: BlockEditor.Split) -> None:
-        """Commit the text before the cursor; the rest becomes a new block, edited from its start.
+        """Commit the text before the cursor; the rest becomes a new block, inserting at its start.
 
         The new block goes right below the current one on screen: its first child if it has
-        children, else its next sibling. Stays in edit mode throughout.
+        children, else its next sibling. Stays in insert mode throughout.
         """
         event.stop()
-        view = self.editing
-        await view.finish_edit(event.before)
+        view = self.inserting
+        await view.finish_insert(event.before)
         new = Block(content=event.after.lstrip("\n"))
         if view.block.children:
             view.block.add_child(new, 0)
@@ -284,11 +284,11 @@ class Outline(VerticalScroll, inherit_bindings=False):  # no scroll keys
         else:
             self.page.insert_after(view.block, new)
             depth = view.depth
-        self.editing = BlockView(new, depth)
-        await self.mount(self.editing, after=view)
+        self.inserting = BlockView(new, depth)
+        await self.mount(self.inserting, after=view)
         self._move_to(self.cursor + 1)
         self.post_message(self.Changed())
-        await self.editing.start_edit(at_start=True)
+        await self.inserting.start_insert(at_start=True)
 
     async def action_delete_block(self) -> None:
         if block := self.cursor_block:

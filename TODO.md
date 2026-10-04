@@ -29,7 +29,7 @@ Build order. Each phase ends with something runnable/testable. See `design-doc.m
 
 ## Phase 4 — Editing
 - [x] 18. Modal: normal mode moves between blocks; `i`/Enter edits current block in a `TextArea`; `Esc` commits.
-- [ ] 19. Block ops: new sibling below/above (`o`/`O`), indent/outdent (`>`/`<`), delete, move up/down.
+- [x] 19. Block ops: new sibling below/above (`o`/`O`), indent/outdent (`>`/`<`), delete, move up/down.
 - [ ] 20. Multi-line editing within a block (newline key that doesn't commit).
 - [ ] 21. Cycle task state key (none → TODO → DOING → DONE).
 - [ ] 22. Keybinding audit: nothing on `Ctrl-W` or other Vim `:terminal`-intercepted keys. Test inside `:terminal`.

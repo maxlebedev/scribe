@@ -83,7 +83,7 @@ def test_page_properties_shown_above_blocks(keymap):
     assert asyncio.run(go()) == ("title:: Hi", 0, "a")
 
 
-# --- Editing (tests/fixtures/keybinds.yaml): s/d edit at start/end, ctrl+g commits,
+# --- Inserting (tests/fixtures/keybinds.yaml): s/d insert at start/end, ctrl+g commits,
 # ctrl+b splits into a new block, ctrl+l inserts a newline. ---
 
 
@@ -91,7 +91,7 @@ def keys_for(text):
     return ["space" if c == " " else "ctrl+l" if c == "\n" else c for c in text]
 
 
-def edit(keymap, text, keys):
+def insert(keymap, text, keys):
     """Press `keys`, then return (page, focused widget type, editor text or None, cursor block)."""
 
     async def go():
@@ -111,29 +111,29 @@ def edit(keymap, text, keys):
     return asyncio.run(go())
 
 
-def test_edit_opens_editor_with_block_text(keymap):
-    _, focused, editor_text, _ = edit(keymap, TEXT, ["n", "d"])
+def test_insert_opens_editor_with_block_text(keymap):
+    _, focused, editor_text, _ = insert(keymap, TEXT, ["n", "d"])
     assert focused is BlockEditor and editor_text == "b\nmore"
 
 
 def test_typing_appends_and_commit_updates_block(keymap):
-    page, focused, editor_text, block = edit(keymap, TEXT, ["d", *keys_for(" done"), "ctrl+g"])
+    page, focused, editor_text, block = insert(keymap, TEXT, ["d", *keys_for(" done"), "ctrl+g"])
     assert block.content == "a done" and page.blocks[0] is block
     assert focused is Outline and editor_text is None
 
 
-def test_normal_mode_keys_are_text_while_editing(keymap):
-    page, _, editor_text, block = edit(keymap, TEXT, ["d", "n", "p", "x"])
+def test_edit_mode_keys_are_text_while_inserting(keymap):
+    page, _, editor_text, block = insert(keymap, TEXT, ["d", "n", "p", "x"])
     assert editor_text == "anpx" and block is page.blocks[0]  # no move, no quit
 
 
-def test_newline_key_inserts_newline_while_editing(keymap):
-    _, _, _, block = edit(keymap, TEXT, ["d", *keys_for("\nsecond"), "ctrl+g"])
+def test_newline_key_inserts_newline_while_inserting(keymap):
+    _, _, _, block = insert(keymap, TEXT, ["d", *keys_for("\nsecond"), "ctrl+g"])
     assert block.content == "a\nsecond"
 
 
 def test_commit_drops_trailing_blank_lines(keymap):
-    _, _, _, block = edit(keymap, TEXT, ["d", "ctrl+l", "ctrl+l", "ctrl+g"])
+    _, _, _, block = insert(keymap, TEXT, ["d", "ctrl+l", "ctrl+l", "ctrl+g"])
     assert block.content == "a"
 
 
@@ -152,12 +152,12 @@ def test_commit_rerenders_block(keymap):
     assert ("TODO", MARKER_STYLES["TODO"]) in [(text.plain[s.start : s.end], s.style) for s in text.spans]
 
 
-def test_edit_on_empty_page_creates_first_block(keymap):
-    page, _, _, block = edit(keymap, "", ["d", *keys_for("hello"), "ctrl+g"])
+def test_insert_on_empty_page_creates_first_block(keymap):
+    page, _, _, block = insert(keymap, "", ["d", *keys_for("hello"), "ctrl+g"])
     assert [b.content for b in page.blocks] == ["hello"] and block is page.blocks[0]
 
 
-def test_only_commit_key_active_while_editing(keymap):
+def test_only_insert_keys_active_while_inserting(keymap):
     async def go():
         app = Host(TEXT, keymap)
         async with app.run_test() as pilot:
@@ -165,13 +165,13 @@ def test_only_commit_key_active_while_editing(keymap):
             await pilot.pause()
             return sorted(b.binding.id for b in app.active_bindings.values() if b.enabled and b.binding.id)
 
-    assert asyncio.run(go()) == ["insert_newline", "split_block", "to_view_mode"]
+    assert asyncio.run(go()) == ["insert_newline", "split_block", "to_edit_mode"]
 
 
-def test_edit_at_start_and_end(keymap):
-    _, _, _, block = edit(keymap, TEXT, ["n", "s", *keys_for("X"), "ctrl+g"])
+def test_insert_at_start_and_end(keymap):
+    _, _, _, block = insert(keymap, TEXT, ["n", "s", *keys_for("X"), "ctrl+g"])
     assert block.content == "Xb\nmore"
-    _, _, _, block = edit(keymap, TEXT, ["n", "d", *keys_for("X"), "ctrl+g"])
+    _, _, _, block = insert(keymap, TEXT, ["n", "d", *keys_for("X"), "ctrl+g"])
     assert block.content == "b\nmoreX"
 
 
@@ -355,7 +355,7 @@ def test_new_block_above_and_edits(keymap):
 
 
 def test_new_block_starts_in_edit_mode(keymap):
-    _, focused, editor_text, block = edit(keymap, TEXT, ["v"])
+    _, focused, editor_text, block = insert(keymap, TEXT, ["v"])
     assert focused is BlockEditor and editor_text == "" and block.content == ""
 
 

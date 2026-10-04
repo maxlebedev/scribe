@@ -13,8 +13,8 @@ from app.config import config_path
 DEFAULTS = {
     "cursor_down": "j",
     "cursor_up": "k",
-    "edit_block_start": "a",
-    "edit_block_end": "e",
+    "insert_at_start": "a",
+    "insert_at_end": "e",
     "new_block_below": "o",
     "new_block_above": "O",
     "delete_block": "d",
@@ -22,7 +22,7 @@ DEFAULTS = {
     "outdent_block": "<",
     "undo": "u",
     "redo": "r",
-    "to_view_mode": "escape",  # leaves edit mode, closes pop-ups
+    "to_edit_mode": "escape",  # leaves insert mode, closes pop-ups
     "split_block": "enter",
     # shift+enter only reaches us in terminals that report it (not Vim's :terminal).
     "insert_newline": "shift+enter,ctrl+j",

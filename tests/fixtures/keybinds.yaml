@@ -2,9 +2,9 @@
 # them. Must bind every action (checked by the `keymap` fixture).
 cursor_down: n
 cursor_up: p
-edit_block_start: s
-edit_block_end: d
-to_view_mode: ctrl+g
+insert_at_start: s
+insert_at_end: d
+to_edit_mode: ctrl+g
 split_block: ctrl+b
 insert_newline: ctrl+l
 new_block_below: v
