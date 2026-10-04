@@ -29,7 +29,7 @@ Build order. Each phase ends with something runnable/testable. See `design-doc.m
 
 ## Phase 4 — Editing
 - [x] 18. Modal: normal mode moves between blocks; `i`/Enter edits current block in a `TextArea`; `Esc` commits.
-- [ ] 19. Block ops: new sibling below/above (`o`/`O`), indent/outdent (`Tab`/`Shift-Tab`), delete, move up/down.
+- [ ] 19. Block ops: new sibling below/above (`o`/`O`), indent/outdent (`>`/`<`), delete, move up/down.
 - [ ] 20. Multi-line editing within a block (newline key that doesn't commit).
 - [ ] 21. Cycle task state key (none → TODO → DOING → DONE).
 - [ ] 22. Keybinding audit: nothing on `Ctrl-W` or other Vim `:terminal`-intercepted keys. Test inside `:terminal`.
@@ -57,3 +57,4 @@ Conflict merge, rename-with-reference-update, search/fuzzy finder, query blocks,
 
 ## To refine
 - `tags::` is an awkward UX. is there something better wecan do for properties/tags?
+- Textual's unmapped keys: the text box's built-in editing keys (arrows, home/end, backspace/delete, ctrl+a/e/k/u/w/z…) have no binding ids, so `keybinds.yaml` can't remap them. Decide whether to re-declare them as our own actions. Note ctrl+w clashes with Vim's `:terminal` (item 22).

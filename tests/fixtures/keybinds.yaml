@@ -4,7 +4,15 @@ cursor_down: n
 cursor_up: p
 edit_block_start: s
 edit_block_end: d
-commit_edit: ctrl+g
+to_view_mode: ctrl+g
 split_block: ctrl+b
 insert_newline: ctrl+l
+new_block_below: v
+new_block_above: b
+delete_block: z
+indent_block: "]"
+outdent_block: "["
+undo: h
+redo: t
+help: g
 quit: x

@@ -86,3 +86,55 @@ class Page:
         siblings = self.siblings(block)
         siblings.insert(siblings.index(block) + 1, new)
         new.parent = block.parent
+
+    def insert_before(self, block: Block, new: Block) -> None:
+        """Insert `new` as the previous sibling of `block`."""
+        siblings = self.siblings(block)
+        siblings.insert(siblings.index(block), new)
+        new.parent = block.parent
+
+    def remove(self, block: Block) -> None:
+        """Remove `block` and its children."""
+        self.siblings(block).remove(block)
+        block.parent = None
+
+    def indent_block(self, block: Block) -> bool:
+        """Make `block` the last child of its previous sibling. False if it has none."""
+        siblings = self.siblings(block)
+        i = siblings.index(block)
+        if i == 0:
+            return False
+        siblings.pop(i)
+        siblings[i - 1].add_child(block)
+        return True
+
+    def outdent_block(self, block: Block) -> bool:
+        """Move `block` up a level, right after its parent; its following siblings become its
+        last children, so nothing moves on screen (Logseq's default). False at top level."""
+        parent = block.parent
+        if parent is None:
+            return False
+        i = parent.children.index(block)
+        following = parent.children[i + 1 :]
+        del parent.children[i:]
+        for child in following:
+            block.add_child(child)
+        self.insert_after(parent, block)
+        return True
+
+    def outline(self) -> list[tuple[str, int]]:
+        """The blocks as (content, depth) in document order: a snapshot for undo."""
+        return [(block.content, depth) for block, depth in self.walk()]
+
+    def set_outline(self, rows: list[tuple[str, int]]) -> None:
+        """Rebuild the blocks from an `outline()` snapshot."""
+        self.blocks = []
+        path: list[Block] = []  # the current block's ancestors, then itself
+        for content, depth in rows:
+            block = Block(content=content)
+            del path[depth:]
+            if path:
+                path[-1].add_child(block)
+            else:
+                self.blocks.append(block)
+            path.append(block)

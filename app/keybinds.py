@@ -15,10 +15,18 @@ DEFAULTS = {
     "cursor_up": "k",
     "edit_block_start": "a",
     "edit_block_end": "e",
-    "commit_edit": "escape",
+    "new_block_below": "o",
+    "new_block_above": "O",
+    "delete_block": "d",
+    "indent_block": ">",
+    "outdent_block": "<",
+    "undo": "u",
+    "redo": "r",
+    "to_view_mode": "escape",  # leaves edit mode, closes pop-ups
     "split_block": "enter",
     # shift+enter only reaches us in terminals that report it (not Vim's :terminal).
     "insert_newline": "shift+enter,ctrl+j",
+    "help": "?",
     "quit": "q",
 }
 
