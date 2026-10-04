@@ -1,6 +1,6 @@
 """Read-only outline of a page's blocks with a block cursor."""
 
-from rich.text import Text
+from rich.console import Group
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal, VerticalScroll
@@ -8,6 +8,7 @@ from textual.widgets import Static
 
 from app.keybinds import DEFAULTS
 from app.model import Block, Page
+from app.render import render_block, render_page_properties
 
 INDENT = 2  # columns per nesting level
 
@@ -29,8 +30,7 @@ class BlockView(Horizontal):
 
     def compose(self) -> ComposeResult:
         yield Static("•", classes="bullet")
-        # Text, not a str: a str would be parsed as markup and eat `[[links]]`.
-        yield Static(Text(self.block.content), classes="content")
+        yield Static(Group(*render_block(self.block)), classes="content")
 
 
 class Outline(VerticalScroll):
@@ -45,6 +45,8 @@ class Outline(VerticalScroll):
         self.cursor = 0  # index into the page's blocks in document order
 
     def compose(self) -> ComposeResult:
+        if self.page.property_lines:
+            yield Static(render_page_properties(self.page.property_lines), classes="page-properties")
         for block, depth in self.page.walk():
             yield BlockView(block, depth)
         if not self.page.blocks:

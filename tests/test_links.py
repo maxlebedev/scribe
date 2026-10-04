@@ -1,6 +1,6 @@
 import pytest
 
-from app.links import extract_refs
+from app.links import extract_refs, ref_spans
 
 
 @pytest.mark.parametrize(
@@ -24,3 +24,15 @@ from app.links import extract_refs
 )
 def test_extract_refs(text, refs):
     assert extract_refs(text) == refs
+
+
+@pytest.mark.parametrize(
+    "line,found",
+    [
+        ("see [[A]] and #b", ["[[A]]", "#b"]),
+        ("`[[code]]` and #[[real one]]", ["#[[real one]]"]),
+        ("[[ ]] and C#", []),
+    ],
+)
+def test_ref_spans(line, found):
+    assert [line[s:e] for s, e in ref_spans(line)] == found

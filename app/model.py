@@ -7,7 +7,7 @@ import uuid
 from collections.abc import Iterator
 from dataclasses import dataclass, field
 
-MARKERS = ("TODO", "DOING", "DONE", "LATER", "NOW", "WAITING", "CANCELED")
+MARKERS = ("TODO", "DOING", "DONE", "CANCELED")
 
 PROPERTY = re.compile(r"^([A-Za-z0-9_-]+)::(?:[ \t](.*))?$")
 _MARKER = re.compile(rf"^({'|'.join(MARKERS)})(?:\s|$)")
@@ -16,6 +16,15 @@ _MARKER = re.compile(rf"^({'|'.join(MARKERS)})(?:\s|$)")
 def parse_property(line: str) -> tuple[str, str] | None:
     m = PROPERTY.match(line)
     return (m[1].lower(), (m[2] or "").strip()) if m else None
+
+
+def property_span(lines: list[str]) -> range:
+    """Indexes of a block's `key:: value` lines: directly after the first line, or from it on."""
+    start = 0 if lines and parse_property(lines[0]) else 1
+    end = start
+    while end < len(lines) and parse_property(lines[end]):
+        end += 1
+    return range(start, end)
 
 
 @dataclass(eq=False)
@@ -39,14 +48,7 @@ class Block:
     def properties(self) -> dict[str, str]:
         """`key:: value` lines directly after the first line (or from the first line on)."""
         lines = self.content.split("\n")
-        start = 0 if parse_property(lines[0]) else 1
-        props = {}
-        for line in lines[start:]:
-            prop = parse_property(line)
-            if prop is None:
-                break
-            props[prop[0]] = prop[1]
-        return props
+        return dict(parse_property(lines[i]) for i in property_span(lines))
 
     def add_child(self, child: Block, index: int | None = None) -> None:
         child.parent = self

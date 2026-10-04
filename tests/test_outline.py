@@ -1,6 +1,7 @@
 import asyncio
 
 from textual.app import App
+from textual.widgets import Static
 
 from app.markdown import parse
 from app.outline import BlockView, Outline
@@ -64,3 +65,14 @@ def test_only_cursor_block_highlighted(keymap):
 
 def test_empty_page_has_no_cursor(keymap):
     assert run(keymap, "", ["n", "p"])[2] is None
+
+
+def test_page_properties_shown_above_blocks(keymap):
+    async def go():
+        app = Host("title:: Hi\n\n- a\n", keymap)
+        async with app.run_test():
+            outline = app.query_one(Outline)
+            props = outline.query_one(".page-properties", Static)
+            return str(props.content), outline.children.index(props), outline.cursor_block.content
+
+    assert asyncio.run(go()) == ("title:: Hi", 0, "a")
