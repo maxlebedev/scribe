@@ -23,7 +23,7 @@ Build order. Each phase ends with something runnable/testable. See `design-doc.m
 
 ## Phase 3 — Page view (read-only)
 - [x] 14. Textual app shell; launches on today's journal (create if missing).
-- [ ] 15. Outline widget: render bullets, indentation, block cursor (`j`/`k`).
+- [x] 15. Outline widget: render bullets, indentation, block cursor (`j`/`k` by default; rebindable in `keybinds.yaml`).
 - [ ] 16. Render: task-state styling, properties (dimmed), link highlighting, code blocks w/ syntax highlighting.
 - [ ] 17. Backlinks panel below the page (blocks referencing this page, grouped by source page).
 

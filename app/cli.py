@@ -4,6 +4,7 @@ import argparse
 import sys
 
 from app.config import config_path, load_config
+from app.keybinds import load_keybinds
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -17,9 +18,10 @@ def main(argv: list[str] | None = None) -> None:
 
     try:
         config = load_config(args.notes_dir)
+        keymap = load_keybinds()
     except (OSError, ValueError) as e:  # tomllib.TOMLDecodeError is a ValueError
         sys.exit(f"scribe: {e}")
 
     from app.ui import ScribeApp  # deferred: keeps --help fast
 
-    ScribeApp(config).run()
+    ScribeApp(config, keymap).run()

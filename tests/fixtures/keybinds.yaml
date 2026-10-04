@@ -1,0 +1,5 @@
+# Keybindings for the tests: deliberately not the defaults, so tests never depend on
+# them. Must bind every action (checked by the `keymap` fixture).
+cursor_down: n
+cursor_up: p
+quit: x
